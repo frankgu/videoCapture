@@ -2,7 +2,7 @@
 #include <iostream>
 
 
-VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames, int _numberofResizedFrames, int _ratio)
+VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames, int numberOfFixedImages, int _numberofResizedFrames, int _ratio)
 {
 	state = STOP;
 	cap.open(source); //opens capture stream
@@ -10,12 +10,13 @@ VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames,
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
 	images = std::deque<cv::Mat>(numberOfFrames); //initialize quoue of captured images
+	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
 	numberofResizedFrames = _numberofResizedFrames;
 	timeStamps = std::deque<long long>(numberofResizedFrames);
 	ratio = _ratio;
 }
 
-VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int _numberofResizedFrames, int _ratio)
+VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int numberOfFixedImages, int _numberofResizedFrames, int _ratio)
 {
 	state = STOP;
 	cap.open(source); //opens capture stream
@@ -23,6 +24,7 @@ VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int _nu
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
 	images = std::deque<cv::Mat>(numberOfFrames); //initialize quoue of captured images
+	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
 	numberofResizedFrames = _numberofResizedFrames;
 	timeStamps = std::deque<long long>(numberofResizedFrames);
 	ratio = _ratio;
@@ -30,16 +32,41 @@ VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int _nu
 
 void VideoCaptureProcess::start()
 {
+
 	if (state == START)
 		return;
 	terminate = false;
 	terminateRequest = false;
 	captureThread = std::thread(VideoCaptureProcess::captureLoop, this); // starts capturing thread
+	captureThread2 = std::thread(VideoCaptureProcess::captureFixedImages, this); // starts another capturing
 	state = START;
+
 }
+
 void VideoCaptureProcess::captureLoop(VideoCaptureProcess* obj) //static function
 {
 	obj->loop();
+}
+
+void VideoCaptureProcess::captureFixedImages(VideoCaptureProcess* obj) // static function
+{
+	obj->loop2();
+}
+
+void VideoCaptureProcess::loop2()//another capture loop
+{
+	while (!terminate){
+
+		mutex.lock();
+		for (int i = 0; i < fixedImages.size(); i++)
+		{
+			fixedImages.push_back(images.at(images.size() - 1 - i).clone());
+
+//			fixedImages.push_back(images[199].clone());
+			fixedImages.pop_front();
+		}
+		mutex.unlock();
+	}
 }
 
 void VideoCaptureProcess::loop()//capturing loop
@@ -87,6 +114,16 @@ void VideoCaptureProcess::grabFrame(cv::Mat& ret, int i)
 	mutex.unlock();
 
 }
+
+void VideoCaptureProcess::grabFixedImageFrame(cv::Mat& ret)
+{
+	int sz, ts;
+	mutex.lock();
+	sz = fixedImages.size();
+	ret = fixedImages[sz - 1].clone();
+	mutex.unlock();
+}
+
 void VideoCaptureProcess::grabFrameWithTime(cv::Mat& ret, long long& time, int i)
 {
 	int sz, ts;
@@ -131,8 +168,10 @@ void VideoCaptureProcess::removeMResizedFrame(int m)
 }
 VideoCaptureProcess::~VideoCaptureProcess(void)
 {
+
 	stop();
 	cap.release();
+
 }
 void VideoCaptureProcess::stop(void)
 {
@@ -142,5 +181,6 @@ void VideoCaptureProcess::stop(void)
 	terminateRequest = true;
 	mutex.unlock();
 	captureThread.join();
+	captureThread2.join();
 	state = STOP;
 }
