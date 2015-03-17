@@ -60,8 +60,8 @@ void VideoCaptureProcess::loop2()//another capture loop
 		mutex.lock();
 		for (int i = 0; i < fixedImages.size(); i++)
 		{
-			fixedImages.push_back(images.at(images.size() - 1 - i).clone());
-
+			fixedImages.push_back(images.at(i).clone());
+//			fixedImages.push_back(images.at(images.size() - 1 - i).clone());
 //			fixedImages.push_back(images[199].clone());
 			fixedImages.pop_front();
 		}
