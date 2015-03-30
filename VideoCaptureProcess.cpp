@@ -146,6 +146,12 @@ void VideoCaptureProcess::grabFrameWithTime(cv::Mat& ret, long long& time, int i
 	time = images[sz - i - 1].timeStamp;
 	mutex.unlock();
 }
+
+int VideoCaptureProcess::getFPS()
+{
+	return cap.get(CV_CAP_PROP_FPS);
+}
+
 std::deque<Image> VideoCaptureProcess::grabNResizedFrame(int N)
 {
 	int sz;

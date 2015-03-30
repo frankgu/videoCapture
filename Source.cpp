@@ -7,9 +7,9 @@ int main()
 	try
 	{
 		//const char* addr = "rtsp://192.168.0.100/axis-media/media.amp";
-		const char* addr = "C:/Users/Mehdi/Downloads/face_eigen_movie.avi";
+		const char* addr = "http://root:viva2014@64.61.112.18:8890/mjpg/video.mjpg";
 
-		VideoCaptureProcess cap(0, 50, 50);
+		VideoCaptureProcess cap(0, 200, 50);
 		cap.start();
 		cv::Mat image;
 		cv::Mat fixImage;
@@ -29,7 +29,7 @@ int main()
 			if (!image.empty())
 			{
 				char txt[100];
-				sprintf(txt, "TimeStamp = %d", time);
+				sprintf(txt, "TimeStamp = %d %i", time, cap.getFPS());
 				cv::putText(image, txt, cv::Point(50, 50), 0, 1.0, cv::Scalar(0, 0, 255));
 				imshow("Original", image);
 			}

@@ -46,6 +46,7 @@ public:
 	void grabFrame(cv::Mat& dest, int lag = 0); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
 	void grabFixedImageFrame(cv::Mat& dest);
 	void grabFrameWithTime(cv::Mat& dest, long long& time, int lag = 0);
+	int getFPS();
 	std::deque<Image> grabNResizedFrame(int N); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
 	void removeMResizedFrame(int m);
 	void grabResizedFrameWithTime(cv::Mat& dest, long long& time, int lag = 0);
