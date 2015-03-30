@@ -9,18 +9,24 @@
 #include <mutex>
 #include <chrono>
 
+struct Image
+{
+	cv::Mat image;
+	long long timeStamp;
+};
+
 class VideoCaptureProcess
 {
 private:
 	enum{ START, STOP };
 	cv::VideoCapture cap;
-	std::deque<cv::Mat> images;
-	std::deque<cv::Mat>	fixedImages;
-	std::deque<cv::Mat> resizedImages;
-	std::deque<long long> timeStamps;
+	std::deque<Image> images;
+	std::deque<Image> fixedImages;
+	std::deque<Image> resizedImages;
 	std::mutex mutex;
 	std::thread captureThread;
 	std::thread captureThread2;
+	std::thread actionDetectionThread;
 	int ratio;
 	bool terminateRequest;
 	bool terminate;
@@ -40,7 +46,7 @@ public:
 	void grabFrame(cv::Mat& dest, int lag = 0); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
 	void grabFixedImageFrame(cv::Mat& dest);
 	void grabFrameWithTime(cv::Mat& dest, long long& time, int lag = 0);
-	std::deque<cv::Mat> grabNResizedFrame(int N); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
+	std::deque<Image> grabNResizedFrame(int N); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
 	void removeMResizedFrame(int m);
 	void grabResizedFrameWithTime(cv::Mat& dest, long long& time, int lag = 0);
 	~VideoCaptureProcess(void);

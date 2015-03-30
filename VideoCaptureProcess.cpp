@@ -9,10 +9,9 @@ VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames,
 	start_time = std::chrono::high_resolution_clock::now();
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
-	images = std::deque<cv::Mat>(numberOfFrames); //initialize quoue of captured images
-	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
+	images = std::deque<Image>(numberOfFrames); //initialize quoue of captured images
+	fixedImages = std::deque<Image>(numberOfFixedImages);
 	numberofResizedFrames = _numberofResizedFrames;
-	timeStamps = std::deque<long long>(numberofResizedFrames);
 	ratio = _ratio;
 }
 
@@ -23,10 +22,9 @@ VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int num
 	start_time = std::chrono::high_resolution_clock::now();
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
-	images = std::deque<cv::Mat>(numberOfFrames); //initialize quoue of captured images
-	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
+	images = std::deque<Image>(numberOfFrames); //initialize quoue of captured images
+	fixedImages = std::deque<Image>(numberOfFixedImages);
 	numberofResizedFrames = _numberofResizedFrames;
-	timeStamps = std::deque<long long>(numberofResizedFrames);
 	ratio = _ratio;
 }
 
@@ -38,7 +36,7 @@ void VideoCaptureProcess::start()
 	terminate = false;
 	terminateRequest = false;
 	captureThread = std::thread(VideoCaptureProcess::captureLoop, this); // starts capturing thread
-	captureThread2 = std::thread(VideoCaptureProcess::captureFixedImages, this); // starts another capturing
+	captureThread2 = std::thread(VideoCaptureProcess::captureFixedImages, this); // starts another capturing thread and do the action detection
 	state = START;
 
 }
@@ -57,12 +55,13 @@ void VideoCaptureProcess::loop2()//another capture loop
 {
 	while (!terminate){
 
+		Image image;
 		mutex.lock();
 		for (int i = 0; i < fixedImages.size(); i++)
 		{
-			fixedImages.push_back(images.at(images.size() - 1 - i).clone());
-
-//			fixedImages.push_back(images[199].clone());
+			image.image = images.at(fixedImages.size() - 1 - i).image.clone();
+			image.timeStamp = images.at(fixedImages.size() - 1 - i).timeStamp;
+			fixedImages.push_back(image);
 			fixedImages.pop_front();
 		}
 		mutex.unlock();
@@ -81,19 +80,28 @@ void VideoCaptureProcess::loop()//capturing loop
 			terminate = true;
 		mutex.unlock();
 		cv::Mat img = frame.clone();
+
 		if (!img.empty())
 		{
+			Image image, resImage;
 			cv::Mat res;
 			cv::cvtColor(img, res, CV_BGR2GRAY);
 			cv::resize(res, res, cv::Size(), 1.0 / ratio, 1.0 / ratio);
 			mutex.lock();
-			images.push_back(img);
-			images.pop_front();
-			if (numberofResizedFrames > resizedImages.size())
-				resizedImages.push_back(res);
 			auto end_time = std::chrono::high_resolution_clock::now();
-			timeStamps.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count());
-			timeStamps.pop_front();
+			long long timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+			image.image = img;
+			resImage.image = img;
+			image.timeStamp = timestamp;
+			resImage.timeStamp = timestamp;
+
+			// insert the image capture from the sequence and the timestamp to the images deque
+			images.push_back(image);
+			images.pop_front();
+
+			// insert the resize image to the resizedImages deque
+			if (numberofResizedFrames > resizedImages.size())
+				resizedImages.push_back(resImage);
 			mutex.unlock();
 
 		}
@@ -110,7 +118,7 @@ void VideoCaptureProcess::grabFrame(cv::Mat& ret, int i)
 		throw std::exception("Out of Range");
 
 	mutex.lock();
-	ret = images[sz - i - 1].clone();
+	ret = images[sz - i - 1].image.clone();
 	mutex.unlock();
 
 }
@@ -120,36 +128,36 @@ void VideoCaptureProcess::grabFixedImageFrame(cv::Mat& ret)
 	int sz, ts;
 	mutex.lock();
 	sz = fixedImages.size();
-	ret = fixedImages[sz - 1].clone();
+	ret = fixedImages[sz - 1].image.clone();
 	mutex.unlock();
 }
 
 void VideoCaptureProcess::grabFrameWithTime(cv::Mat& ret, long long& time, int i)
 {
-	int sz, ts;
+	int sz;
 	mutex.lock();
 	sz = images.size();
-	ts = timeStamps.size();
 	mutex.unlock();
 	if (i >= sz)
 		throw std::exception("Out of Range");
 
 	mutex.lock();
-	ret = images[sz - i - 1].clone();
-	time = timeStamps[ts - i - 1];
+	ret = images[sz - i - 1].image.clone();
+	time = images[sz - i - 1].timeStamp;
 	mutex.unlock();
 }
-std::deque<cv::Mat> VideoCaptureProcess::grabNResizedFrame(int N)
+std::deque<Image> VideoCaptureProcess::grabNResizedFrame(int N)
 {
 	int sz;
 	mutex.lock();
 	sz = resizedImages.size();
 	mutex.unlock();
 	if (N >= sz)
-		return std::deque<cv::Mat>();
-	std::deque<cv::Mat> out(N);
+		return std::deque<Image>();
+	std::deque<Image> out(N);
 	mutex.lock();
-	out = std::deque<cv::Mat>(resizedImages.begin(), resizedImages.begin() + N);
+
+	out = std::deque<Image>(resizedImages.begin(), resizedImages.begin() + N);
 	mutex.unlock();
 	return out;
 }

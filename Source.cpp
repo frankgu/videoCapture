@@ -9,7 +9,7 @@ int main()
 		//const char* addr = "rtsp://192.168.0.100/axis-media/media.amp";
 		const char* addr = "C:/Users/Mehdi/Downloads/face_eigen_movie.avi";
 
-		VideoCaptureProcess cap(0, 200, 50);
+		VideoCaptureProcess cap(0, 50, 50);
 		cap.start();
 		cv::Mat image;
 		cv::Mat fixImage;
