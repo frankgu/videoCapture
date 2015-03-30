@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include "GBHDescriptor.h"
 
 struct Image
 {
@@ -24,9 +25,11 @@ private:
 	std::deque<Image> fixedImages;
 	std::deque<Image> resizedImages;
 	std::mutex mutex;
+	std::mutex mutexForSecondThread;
 	std::thread captureThread;
 	std::thread captureThread2;
 	std::thread actionDetectionThread;
+	GBHDescriptor desc;
 	int ratio;
 	bool terminateRequest;
 	bool terminate;
@@ -50,6 +53,7 @@ public:
 	std::deque<Image> grabNResizedFrame(int N); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
 	void removeMResizedFrame(int m);
 	void grabResizedFrameWithTime(cv::Mat& dest, long long& time, int lag = 0);
+	std::deque<Image> getFixedImageVideo();
 	~VideoCaptureProcess(void);
 };
 
