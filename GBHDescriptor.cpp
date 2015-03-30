@@ -12,7 +12,7 @@ GBHDescriptor::~GBHDescriptor()
 {
 }
 
-void GBHDescriptor::computeIntegVideo(const std::vector<cv::Mat> &ofQue, std::vector<cv::Mat> &_iv)
+void GBHDescriptor::computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vector<cv::Mat> &_iv)
 {
 	cv::Mat im, derXbuf[2], derYbuf[2];
 	im = ofQue[0];
@@ -22,7 +22,7 @@ void GBHDescriptor::computeIntegVideo(const std::vector<cv::Mat> &ofQue, std::ve
 	//initial the first line of itegral value
 	int imageHeight = im.rows + 1;
 	int imageWidth = im.cols + 1;
-	_iv.push_back(cv::Mat(imageHeight, imageWidth * _nbins, CV_32FC1, cv::Scalar(0)));
+	//_iv.push_back(cv::Mat(imageHeight, imageWidth * _nbins, CV_32FC1, cv::Scalar(0)));
 	
 	computeMaxColorDxDy(im, derXbuf[0], derYbuf[0]);
 
@@ -40,16 +40,23 @@ void GBHDescriptor::computeIntegVideo(const std::vector<cv::Mat> &ofQue, std::ve
 		computeMaxColorDxDy(im, derXbuf[1], derYbuf[1]);
 		
 		//appliy a [-1,1] temporal filter over two consecutive gradient images.
-		cv::Mat tmpPs, tmp0;
+		cv::Mat tmp, tmp0;
 		subtract(derXbuf[1], derXbuf[0], oFlows[0], cv::noArray(), CV_32F);
 		subtract(derYbuf[1], derYbuf[0], oFlows[1], cv::noArray(), CV_32F);
-		integralHist(oFlows[0], oFlows[1], tmpPs);
+
+		cv::Mat grad;
+		cv::convertScaleAbs(oFlows[0], tmp);
+		cv::convertScaleAbs(oFlows[1], tmp0);
+		cv::addWeighted(tmp, 0.5, tmp0, 0.5, 0, grad);
+		cv::imshow("GBH", grad);
+		
+/*		integralHist(oFlows[0], oFlows[1], tmp);
 		tmp0 = cv::Mat(imageHeight, imageWidth*_nbins, CV_32FC1);
-		add(tmpPs, _iv[ivCount], tmp0);
+		add(tmp, _iv[ivCount], tmp0);
 		_iv.push_back(tmp0);
 
 		ivCount++;
-
+		*/
 		derXbuf[0] = derXbuf[1];
 		derXbuf[1] = cv::Mat();
 
@@ -114,8 +121,9 @@ void GBHDescriptor::computeMaxColorDxDy(const cv::Mat& src, cv::Mat& dx, cv::Mat
 		cv::cvtColor(src, grey, CV_RGB2GRAY);
 	else
 		grey = src;
+
 	//do the sobel computation
-	Sobel(grey, dx, CV_32F, 1, 0, 1, 1, 0, IPL_BORDER_REPLICATE);
-	Sobel(grey, dy, CV_32F, 0, 1, 1, 1, 0, IPL_BORDER_REPLICATE);
+	Sobel(grey, dx, CV_32F, 1, 0, 3, 1, 0, cv::BORDER_DEFAULT);
+	Sobel(grey, dy, CV_32F, 0, 1, 3, 1, 0, cv::BORDER_DEFAULT);
 
 }

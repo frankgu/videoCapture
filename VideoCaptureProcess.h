@@ -22,14 +22,11 @@ private:
 	enum{ START, STOP };
 	cv::VideoCapture cap;
 	std::deque<Image> images;
-	std::deque<Image> fixedImages;
 	std::deque<Image> resizedImages;
+	std::deque<cv::Mat> fixedImages;
 	std::mutex mutex;
-	std::mutex mutexForSecondThread;
 	std::thread captureThread;
 	std::thread captureThread2;
-	std::thread actionDetectionThread;
-	GBHDescriptor desc;
 	int ratio;
 	bool terminateRequest;
 	bool terminate;
@@ -39,6 +36,8 @@ private:
 	void loop();
 	void loop2();
 
+	GBHDescriptor desc;
+
 public:
 	static void captureLoop(VideoCaptureProcess* obj); //Static method called by thread
 	static void captureFixedImages(VideoCaptureProcess* obj); //Static method called by threads
@@ -47,7 +46,8 @@ public:
 	void start(); //start capturing thread
 	void stop(); //stop capturing thread
 	void grabFrame(cv::Mat& dest, int lag = 0); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
-	void grabFixedImageFrame(cv::Mat& dest);
+	void grabFixedImageFrame(cv::Mat& dest);	//grap the frst image in the fixedImages deque
+	std::deque<cv::Mat> grabFixedVideo();
 	void grabFrameWithTime(cv::Mat& dest, long long& time, int lag = 0);
 	int getFPS();
 	std::deque<Image> grabNResizedFrame(int N); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag

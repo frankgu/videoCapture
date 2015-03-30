@@ -10,7 +10,7 @@ VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames,
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
 	images = std::deque<Image>(numberOfFrames); //initialize quoue of captured images
-	fixedImages = std::deque<Image>(numberOfFixedImages);
+	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
 	numberofResizedFrames = _numberofResizedFrames;
 	ratio = _ratio;
 }
@@ -23,7 +23,7 @@ VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int num
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
 	images = std::deque<Image>(numberOfFrames); //initialize quoue of captured images
-	fixedImages = std::deque<Image>(numberOfFixedImages);
+	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
 	numberofResizedFrames = _numberofResizedFrames;
 	ratio = _ratio;
 }
@@ -55,26 +55,13 @@ void VideoCaptureProcess::loop2()//another capture loop
 {
 	while (!terminate){
 
-		Image image;
-		std::vector<cv::Mat> src;
-		mutexForSecondThread.lock();
-		for (int i = 0; i < fixedImages.size(); i++)
+		mutex.lock();
+		for (size_t i = 0; i < fixedImages.size(); i++)
 		{
-			image.image = images.at(fixedImages.size() - 1 - i).image.clone();
-			image.timeStamp = images.at(fixedImages.size() - 1 - i).timeStamp;
-			fixedImages.push_back(image);
-			src.push_back(image.image);
+			fixedImages.push_back(images.at(fixedImages.size() - 1 - i).image.clone());
 			fixedImages.pop_front();
 		}
-
-		std::vector<cv::Mat> dst;
-		if (!src[src.size()-1].empty())
-		{
-			desc.computeIntegVideo(src, dst);	//compute the GBH descriptor
-			cv::imshow("GBH", dst[0]);
-		}
-		
-		mutexForSecondThread.unlock();
+		mutex.unlock();
 	}
 }
 
@@ -115,7 +102,7 @@ void VideoCaptureProcess::loop()//capturing loop
 			mutex.unlock();
 
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(33));
 	}
 }
 
@@ -139,8 +126,20 @@ void VideoCaptureProcess::grabFixedImageFrame(cv::Mat& ret)
 	int sz, ts;
 	mutex.lock();
 	sz = fixedImages.size();
-	ret = fixedImages[sz - 1].image.clone();
+	ret = fixedImages[0].clone();
 	mutex.unlock();
+}
+
+std::deque<cv::Mat> VideoCaptureProcess::grabFixedVideo()
+{
+	std::deque<cv::Mat> result;
+	mutex.lock();
+	for (int i = 0; i < fixedImages.size(); i++)
+	{
+		result.push_back(fixedImages[i].clone());
+	}
+	mutex.unlock();
+	return result;
 }
 
 void VideoCaptureProcess::grabFrameWithTime(cv::Mat& ret, long long& time, int i)
@@ -178,6 +177,7 @@ std::deque<Image> VideoCaptureProcess::grabNResizedFrame(int N)
 	mutex.unlock();
 	return out;
 }
+
 void VideoCaptureProcess::removeMResizedFrame(int m)
 {
 	int sz;
@@ -191,6 +191,7 @@ void VideoCaptureProcess::removeMResizedFrame(int m)
 		resizedImages.pop_front();
 	mutex.unlock();
 }
+
 VideoCaptureProcess::~VideoCaptureProcess(void)
 {
 
@@ -198,6 +199,7 @@ VideoCaptureProcess::~VideoCaptureProcess(void)
 	cap.release();
 
 }
+
 void VideoCaptureProcess::stop(void)
 {
 	if (state == STOP)
@@ -209,9 +211,3 @@ void VideoCaptureProcess::stop(void)
 	captureThread2.join();
 	state = STOP;
 }
-
-std::deque<Image> VideoCaptureProcess::getFixedImageVideo()
-{
-	return fixedImages;
-}
-

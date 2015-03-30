@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cv.h>
+#include <highgui.h>
 #include <iostream>
 #include <vector>
 #include <deque>
@@ -12,7 +13,7 @@ public:
 	GBHDescriptor();
 	~GBHDescriptor();
 
-	void computeIntegVideo(const std::vector<cv::Mat> &ofQue, std::vector<cv::Mat> &_iv);
+	void computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vector<cv::Mat> &_iv);
 	
 private:
 
