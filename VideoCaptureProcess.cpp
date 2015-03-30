@@ -56,15 +56,25 @@ void VideoCaptureProcess::loop2()//another capture loop
 	while (!terminate){
 
 		Image image;
-		mutex.lock();
+		std::vector<cv::Mat> src;
+		mutexForSecondThread.lock();
 		for (int i = 0; i < fixedImages.size(); i++)
 		{
 			image.image = images.at(fixedImages.size() - 1 - i).image.clone();
 			image.timeStamp = images.at(fixedImages.size() - 1 - i).timeStamp;
 			fixedImages.push_back(image);
+			src.push_back(image.image);
 			fixedImages.pop_front();
 		}
-		mutex.unlock();
+
+		std::vector<cv::Mat> dst;
+		if (!src[src.size()-1].empty())
+		{
+			desc.computeIntegVideo(src, dst);	//compute the GBH descriptor
+			cv::imshow("GBH", dst[0]);
+		}
+		
+		mutexForSecondThread.unlock();
 	}
 }
 
@@ -108,6 +118,7 @@ void VideoCaptureProcess::loop()//capturing loop
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 }
+
 void VideoCaptureProcess::grabFrame(cv::Mat& ret, int i)
 {
 	int sz;
@@ -192,3 +203,9 @@ void VideoCaptureProcess::stop(void)
 	captureThread2.join();
 	state = STOP;
 }
+
+std::deque<Image> VideoCaptureProcess::getFixedImageVideo()
+{
+	return fixedImages;
+}
+

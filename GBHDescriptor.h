@@ -12,12 +12,13 @@ public:
 	GBHDescriptor();
 	~GBHDescriptor();
 
-	bool computeIntegVideo(const std::deque<cv::Mat> &ofQue);
+	void computeIntegVideo(const std::vector<cv::Mat> &ofQue, std::vector<cv::Mat> &_iv);
+	
+private:
+
 	void computeMaxColorDxDy(const cv::Mat& src, cv::Mat& dx, cv::Mat& dy);
 	void integralHist(const cv::Mat& dx, const cv::Mat& dy, cv::Mat& hist) const;
 
-private:
-
-	std::vector<cv::Mat> _iv[2];	//integral video for 3D derivatives(dx, dy, dt)
+	int _nbins;
 };
 
