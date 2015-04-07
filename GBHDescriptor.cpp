@@ -17,13 +17,7 @@ void GBHDescriptor::computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vec
 	cv::Mat im, derXbuf[2], derYbuf[2];
 	im = ofQue[0];
 
-	cv::GaussianBlur(im, im, cv::Size(9, 9), 2);
-
-	//initial the first line of itegral value
-	int imageHeight = im.rows + 1;
-	int imageWidth = im.cols + 1;
-	//_iv.push_back(cv::Mat(imageHeight, imageWidth * _nbins, CV_32FC1, cv::Scalar(0)));
-	
+	cv::GaussianBlur(im, im, cv::Size(3, 3), 2);
 	computeMaxColorDxDy(im, derXbuf[0], derYbuf[0]);
 
 	int ivCount = 0;
@@ -34,7 +28,7 @@ void GBHDescriptor::computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vec
 		im = ofQue[id];
 
 		//apply a gaussianblur to the image to reduce the noise
-		cv::GaussianBlur(im, im, cv::Size(9, 9), 2);
+		cv::GaussianBlur(im, im, cv::Size(3, 3), 2);
 
 		//generate the deriatives in x and y directions
 		computeMaxColorDxDy(im, derXbuf[1], derYbuf[1]);
@@ -48,15 +42,8 @@ void GBHDescriptor::computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vec
 		cv::convertScaleAbs(oFlows[0], tmp);
 		cv::convertScaleAbs(oFlows[1], tmp0);
 		cv::addWeighted(tmp, 0.5, tmp0, 0.5, 0, grad);
-		cv::imshow("GBH", grad);
-		
-/*		integralHist(oFlows[0], oFlows[1], tmp);
-		tmp0 = cv::Mat(imageHeight, imageWidth*_nbins, CV_32FC1);
-		add(tmp, _iv[ivCount], tmp0);
-		_iv.push_back(tmp0);
+		_iv.push_back(grad);
 
-		ivCount++;
-		*/
 		derXbuf[0] = derXbuf[1];
 		derXbuf[1] = cv::Mat();
 
@@ -64,54 +51,6 @@ void GBHDescriptor::computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vec
 		derYbuf[1] = cv::Mat();
 	}
 }
-
-void GBHDescriptor::integralHist(const cv::Mat& dx, const cv::Mat& dy, cv::Mat& hist) const
-{
-	cv::Mat  magnitude, phase;
-
-	//magnitude(dx, dy, magnitude);
-	//phase(dx, dy, phase, true);
-	cartToPolar(dx, dy, magnitude, phase, true);
-
-	int cols = dx.cols;
-	int rows = dx.rows;
-
-	int iCols = (cols + 1)*_nbins;
-	hist = cv::Mat(rows + 1, iCols, CV_32FC1, cv::Scalar(0));
-
-	for (int iy = 0; iy < rows; iy++)
-	{
-		const float *pMag = magnitude.ptr<float>(iy);
-		const float *pPhase = phase.ptr<float>(iy);
-		const float *pHist0 = hist.ptr<float>(iy);//for integral image, first rows and first cols are zero
-		float *pHist = hist.ptr<float>(iy + 1); //for integral image, first rows and first cols are zero
-		std::vector<float> histSum(_nbins);
-		for (int i = 0; i < _nbins; i++) histSum[i] = 0.f;
-		for (int ix = 0; ix < cols; ix++)
-		{
-			float bin, weight0, weight1, magnitude0, magnitude1, angle;
-			angle = pPhase[ix] >= 360 ? pPhase[ix] - 360 : pPhase[ix];
-			int bin0, bin1;
-			bin = angle / (float)(360/_nbins);
-
-			bin0 = (int)floorf(bin);
-			bin1 = (bin0 + 1) % _nbins;
-
-			//split the magnitude into two adjacent bins
-			weight1 = (bin - bin0);
-			weight0 = 1 - weight1;
-			magnitude0 = pMag[ix] * weight0;
-			magnitude1 = pMag[ix] * weight1;
-			histSum[bin0] += magnitude0;
-			histSum[bin1] += magnitude1;
-			for (int n = 0; n < _nbins; n++)
-			{
-				pHist[(ix + 1)*_nbins + n] = pHist0[(ix + 1)*_nbins + n] + histSum[n];
-			}
-		}
-	}
-}
-
 
 void GBHDescriptor::computeMaxColorDxDy(const cv::Mat& src, cv::Mat& dx, cv::Mat& dy)
 {

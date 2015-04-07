@@ -46,6 +46,7 @@ public:
 	void start(); //start capturing thread
 	void stop(); //stop capturing thread
 	void grabFrame(cv::Mat& dest, int lag = 0); //grabFrame gets captured frames from capturing thread. dest = destination frame, lag = delayed frame by lag
+	cv::Size getFrameSize();
 	void grabFixedImageFrame(cv::Mat& dest);	//grap the frst image in the fixedImages deque
 	std::deque<cv::Mat> grabFixedVideo();
 	void grabFrameWithTime(cv::Mat& dest, long long& time, int lag = 0);

@@ -62,6 +62,7 @@ void VideoCaptureProcess::loop2()//another capture loop
 			fixedImages.pop_front();
 		}
 		mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::milliseconds(33));
 	}
 }
 
@@ -99,8 +100,8 @@ void VideoCaptureProcess::loop()//capturing loop
 			// insert the resize image to the resizedImages deque
 			if (numberofResizedFrames > resizedImages.size())
 				resizedImages.push_back(resImage);
+			
 			mutex.unlock();
-
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(33));
 	}
@@ -119,6 +120,12 @@ void VideoCaptureProcess::grabFrame(cv::Mat& ret, int i)
 	ret = images[sz - i - 1].image.clone();
 	mutex.unlock();
 
+}
+
+cv::Size VideoCaptureProcess::getFrameSize(){
+
+	return cv::Size((int)cap.get(CV_CAP_PROP_FRAME_WIDTH),
+		(int)cap.get(CV_CAP_PROP_FRAME_HEIGHT));
 }
 
 void VideoCaptureProcess::grabFixedImageFrame(cv::Mat& ret)

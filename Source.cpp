@@ -1,4 +1,6 @@
 #include "VideoCaptureProcess.h"
+#include <time.h>
+#include <limits.h>
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -7,25 +9,39 @@ int main()
 	try
 	{
 		//const char* addr = "rtsp://192.168.0.100/axis-media/media.amp";
-		const char* addr = "http://root:viva2014@64.61.112.18:8890/mjpg/video.mjpg";
-
-		VideoCaptureProcess cap(0, 50, 50);
+		//const char* addr = "http://root:viva2014@64.61.112.18:8890/mjpg/video.mjpg";
+		const char* addr = "C:\\Users\\Dongfeng\\Desktop\\fight.mp4";
+		
+		// video capture process
+		VideoCaptureProcess cap(addr, 50, 2);
 		cap.start();
+
+		// video writer
+		cv::VideoWriter outputVideo;
+		outputVideo.open("C:/Users/Dongfeng/Desktop/output.avi", -1, cap.getFPS(), cap.getFrameSize());
+
 		cv::Mat image;
-		cv::Mat fixImage;
-		long long time;
+		long long timestamp;
 		cv::namedWindow("Original");
+
+		//fps counter begin
+		time_t start, end;
+		double sec;
+		double fps;
+		int counter = 0;
+		//fps counter end
+
+		int c;
 		while (true)
 		{
-			/** grab image from capturing thread
-			Input Parameters:
-			cv::Mat image = destination image
-			long long time = time between starting capture thread and capturing image
-			int lag = default 0, grab cached images
-			*/
+			//fps counter begin
+			if (counter == 0){
+				time(&start);
+			}
+			//fps counter end
 
 			//grap the original frame
-			cap.grabFrameWithTime(image, time, 0);
+			cap.grabFrameWithTime(image, timestamp, 2);
 
 			GBHDescriptor desc;
 			std::vector<cv::Mat> output;
@@ -34,27 +50,44 @@ int main()
 			{
 
 				desc.computeIntegVideo(input, output);
-				//cv::imshow("GBH", output[0]);
+				outputVideo << output[0];
+				cv::imshow("GBH", output[0]);
 
 			}
 				
 			if (!image.empty())
 			{
 				char txt[100];
-				sprintf(txt, "TimeStamp = %d %i", time, cap.getFPS());
+				sprintf(txt, "TimeStamp = %d", timestamp);
 				cv::putText(image, txt, cv::Point(50, 50), 0, 1.0, cv::Scalar(0, 0, 255));
 				imshow("Original", image);
 			}
 
-			char c = cv::waitKey(30);
+			// fps counter begin
+			time(&end);
+			counter++;
+			sec = difftime(end, start);
+			fps = counter / sec;
+			if (counter > 30)
+				std::cout << fps << std::endl;
+			std::cout.flush();
+			// overflow protection
+			if (counter == (INT_MAX - 1000))
+				counter = 0;
+			// fps counter end
+
+			c = cv::waitKey(1);
 			if (c == 'c')
 				break;
 			else if (c == 's')
 				cap.stop();//stop capturing thread
 			else if (c == 'p')
 				cap.start();//start capturing thread
+
 		}
+		outputVideo.release();
 	}
+	
 	catch (std::exception& e)
 	{
 		std::cout << e.what();

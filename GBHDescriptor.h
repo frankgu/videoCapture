@@ -18,8 +18,6 @@ public:
 private:
 
 	void computeMaxColorDxDy(const cv::Mat& src, cv::Mat& dx, cv::Mat& dy);
-	void integralHist(const cv::Mat& dx, const cv::Mat& dy, cv::Mat& hist) const;
-
 	int _nbins;
 };
 
