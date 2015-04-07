@@ -2,7 +2,7 @@
 #include <iostream>
 
 
-VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames, int numberOfFixedImages, int _numberofResizedFrames, int _ratio)
+VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames, int _numberofResizedFrames, int _ratio)
 {
 	state = STOP;
 	cap.open(source); //opens capture stream
@@ -10,12 +10,12 @@ VideoCaptureProcess::VideoCaptureProcess(const char* source, int numberOfFrames,
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
 	images = std::deque<Image>(numberOfFrames); //initialize quoue of captured images
-	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
+	GBHImages = std::deque<cv::Mat>(numberOfFrames);
 	numberofResizedFrames = _numberofResizedFrames;
 	ratio = _ratio;
 }
 
-VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int numberOfFixedImages, int _numberofResizedFrames, int _ratio)
+VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int _numberofResizedFrames, int _ratio)
 {
 	state = STOP;
 	cap.open(source); //opens capture stream
@@ -23,7 +23,7 @@ VideoCaptureProcess::VideoCaptureProcess(int source, int numberOfFrames, int num
 	if (!cap.isOpened())
 		throw std::exception("Cannot open source"); //throw exception if it is not able to open the stream
 	images = std::deque<Image>(numberOfFrames); //initialize quoue of captured images
-	fixedImages = std::deque<cv::Mat>(numberOfFixedImages);
+	GBHImages = std::deque<cv::Mat>(numberOfFrames);
 	numberofResizedFrames = _numberofResizedFrames;
 	ratio = _ratio;
 }
@@ -36,7 +36,7 @@ void VideoCaptureProcess::start()
 	terminate = false;
 	terminateRequest = false;
 	captureThread = std::thread(VideoCaptureProcess::captureLoop, this); // starts capturing thread
-	captureThread2 = std::thread(VideoCaptureProcess::captureFixedImages, this); // starts another capturing thread and do the action detection
+	GBHDescriptorThread = std::thread(VideoCaptureProcess::GBHDescriptorGenerator, this); // starts another capturing thread and do the action detection
 	state = START;
 
 }
@@ -46,23 +46,40 @@ void VideoCaptureProcess::captureLoop(VideoCaptureProcess* obj) //static functio
 	obj->loop();
 }
 
-void VideoCaptureProcess::captureFixedImages(VideoCaptureProcess* obj) // static function
+void VideoCaptureProcess::GBHDescriptorGenerator(VideoCaptureProcess* obj) // static function
 {
-	obj->loop2();
+	obj->GBHDescriptorloop();
 }
 
-void VideoCaptureProcess::loop2()//another capture loop
+void VideoCaptureProcess::GBHDescriptorloop()//another loop for generating the GBH descriptor
 {
+	std::deque<cv::Mat> GBHInput;
+	// initialize the GBHInput
+	GBHInput = std::deque<cv::Mat>(2);
+
 	while (!terminate){
+		cv::Mat latestImage;
+		cv::vector<cv::Mat> GBHOutput;
 
 		mutex.lock();
-		for (size_t i = 0; i < fixedImages.size(); i++)
-		{
-			fixedImages.push_back(images.at(fixedImages.size() - 1 - i).image.clone());
-			fixedImages.pop_front();
-		}
+		latestImage = images[images.size() - 1].image;
 		mutex.unlock();
+
+		// grab image from the images
+		GBHInput.push_back(latestImage);
+		GBHInput.pop_front();
+
+		// generate the GBH Result
+		if (!GBHInput[0].empty() && !GBHInput[1].empty()){
+			desc.computeIntegVideo(GBHInput, GBHOutput);
+			GBHThreadmutex.lock();
+			GBHImages.push_back(GBHOutput[0]);
+			GBHImages.pop_front();
+			GBHThreadmutex.unlock();
+		}
+
 		std::this_thread::sleep_for(std::chrono::milliseconds(33));
+
 	}
 }
 
@@ -122,31 +139,24 @@ void VideoCaptureProcess::grabFrame(cv::Mat& ret, int i)
 
 }
 
+void VideoCaptureProcess::grabGBHFrame(cv::Mat& dest, int i)
+{
+	int sz;
+	GBHThreadmutex.lock();
+	sz = GBHImages.size();
+	GBHThreadmutex.unlock();
+	if (i >= sz)
+		throw std::exception("Out of Range GBH");
+
+	GBHThreadmutex.lock();
+	dest = GBHImages[sz - i - 1].clone();
+	GBHThreadmutex.unlock();
+}
+
 cv::Size VideoCaptureProcess::getFrameSize(){
 
 	return cv::Size((int)cap.get(CV_CAP_PROP_FRAME_WIDTH),
 		(int)cap.get(CV_CAP_PROP_FRAME_HEIGHT));
-}
-
-void VideoCaptureProcess::grabFixedImageFrame(cv::Mat& ret)
-{
-	int sz, ts;
-	mutex.lock();
-	sz = fixedImages.size();
-	ret = fixedImages[0].clone();
-	mutex.unlock();
-}
-
-std::deque<cv::Mat> VideoCaptureProcess::grabFixedVideo()
-{
-	std::deque<cv::Mat> result;
-	mutex.lock();
-	for (int i = 0; i < fixedImages.size(); i++)
-	{
-		result.push_back(fixedImages[i].clone());
-	}
-	mutex.unlock();
-	return result;
 }
 
 void VideoCaptureProcess::grabFrameWithTime(cv::Mat& ret, long long& time, int i)
@@ -215,6 +225,6 @@ void VideoCaptureProcess::stop(void)
 	terminateRequest = true;
 	mutex.unlock();
 	captureThread.join();
-	captureThread2.join();
+	GBHDescriptorThread.join();
 	state = STOP;
 }

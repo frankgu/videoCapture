@@ -4,25 +4,25 @@
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 
-int main()
-{
-	try
-	{
+int main(){
+
+	try{
 		//const char* addr = "rtsp://192.168.0.100/axis-media/media.amp";
 		//const char* addr = "http://root:viva2014@64.61.112.18:8890/mjpg/video.mjpg";
 		const char* addr = "C:\\Users\\Dongfeng\\Desktop\\fight.mp4";
-		
+
 		// video capture process
-		VideoCaptureProcess cap(addr, 50, 2);
+		VideoCaptureProcess cap(addr, 50);
 		cap.start();
 
 		// video writer
 		cv::VideoWriter outputVideo;
-		outputVideo.open("C:/Users/Dongfeng/Desktop/output.avi", -1, cap.getFPS(), cap.getFrameSize());
+		outputVideo.open("C:/Users/Dongfeng/Desktop/output.avi", -1, 60, cap.getFrameSize());
 
-		cv::Mat image;
+		cv::Mat image, GBHImage;
 		long long timestamp;
 		cv::namedWindow("Original");
+		cv::namedWindow("GBH");
 
 		//fps counter begin
 		time_t start, end;
@@ -32,35 +32,28 @@ int main()
 		//fps counter end
 
 		int c;
-		while (true)
-		{
+		while (true){
+
 			//fps counter begin
 			if (counter == 0){
 				time(&start);
 			}
 			//fps counter end
 
-			//grap the original frame
-			cap.grabFrameWithTime(image, timestamp, 2);
+			//grap the original frame and the GBH result frame
+			cap.grabFrameWithTime(image, timestamp, 0);
+			cap.grabGBHFrame(GBHImage, 0);
 
-			GBHDescriptor desc;
-			std::vector<cv::Mat> output;
-			std::deque<cv::Mat> input = cap.grabFixedVideo();
-			if (!input[input.size() - 1].empty())
-			{
-
-				desc.computeIntegVideo(input, output);
-				outputVideo << output[0];
-				cv::imshow("GBH", output[0]);
-
+			if (!GBHImage.empty()){
+				cv::imshow("GBH", GBHImage);
+				outputVideo << GBHImage;
 			}
-				
-			if (!image.empty())
-			{
+
+			if (!image.empty()){
 				char txt[100];
 				sprintf(txt, "TimeStamp = %d", timestamp);
 				cv::putText(image, txt, cv::Point(50, 50), 0, 1.0, cv::Scalar(0, 0, 255));
-				imshow("Original", image);
+				cv::imshow("Original", image);
 			}
 
 			// fps counter begin
@@ -76,7 +69,7 @@ int main()
 				counter = 0;
 			// fps counter end
 
-			c = cv::waitKey(1);
+			c = cv::waitKey(33);
 			if (c == 'c')
 				break;
 			else if (c == 's')
@@ -87,9 +80,7 @@ int main()
 		}
 		outputVideo.release();
 	}
-	
-	catch (std::exception& e)
-	{
+	catch (std::exception& e){
 		std::cout << e.what();
 	}
 	return 0;
