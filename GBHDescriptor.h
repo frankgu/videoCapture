@@ -18,6 +18,5 @@ public:
 private:
 
 	void computeMaxColorDxDy(const cv::Mat& src, cv::Mat& dx, cv::Mat& dy);
-	int _nbins;
 };
 

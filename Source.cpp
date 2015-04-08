@@ -17,7 +17,7 @@ int main(){
 
 		// video writer
 		cv::VideoWriter outputVideo;
-		outputVideo.open("C:/Users/Dongfeng/Desktop/output.avi", -1, 60, cap.getFrameSize());
+		outputVideo.open("C:/Users/Dongfeng/Desktop/output.avi", -1, cap.getFPS(), cap.getFrameSize());
 
 		cv::Mat image, GBHImage;
 		long long timestamp;
@@ -69,7 +69,7 @@ int main(){
 				counter = 0;
 			// fps counter end
 
-			c = cv::waitKey(33);
+			c = cv::waitKey(10);
 			if (c == 'c')
 				break;
 			else if (c == 's')

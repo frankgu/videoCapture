@@ -3,8 +3,6 @@
 
 GBHDescriptor::GBHDescriptor()
 {
-	//initialization
-	_nbins = 8;
 }
 
 
@@ -17,7 +15,7 @@ void GBHDescriptor::computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vec
 	cv::Mat im, derXbuf[2], derYbuf[2];
 	im = ofQue[0];
 
-	cv::GaussianBlur(im, im, cv::Size(3, 3), 2);
+	cv::GaussianBlur(im, im, cv::Size(3, 3), 0, 0, 4);
 	computeMaxColorDxDy(im, derXbuf[0], derYbuf[0]);
 
 	int ivCount = 0;
@@ -28,15 +26,15 @@ void GBHDescriptor::computeIntegVideo(const std::deque<cv::Mat> &ofQue, std::vec
 		im = ofQue[id];
 
 		//apply a gaussianblur to the image to reduce the noise
-		cv::GaussianBlur(im, im, cv::Size(3, 3), 2);
+		cv::GaussianBlur(im, im, cv::Size(3, 3), 0, 0, 4);
 
 		//generate the deriatives in x and y directions
 		computeMaxColorDxDy(im, derXbuf[1], derYbuf[1]);
-		
+
 		//appliy a [-1,1] temporal filter over two consecutive gradient images.
 		cv::Mat tmp, tmp0;
-		subtract(derXbuf[1], derXbuf[0], oFlows[0], cv::noArray(), CV_32F);
-		subtract(derYbuf[1], derYbuf[0], oFlows[1], cv::noArray(), CV_32F);
+		subtract(derXbuf[1], derXbuf[0], oFlows[0], cv::noArray(), CV_16S);
+		subtract(derYbuf[1], derYbuf[0], oFlows[1], cv::noArray(), CV_16S);
 
 		cv::Mat grad;
 		cv::convertScaleAbs(oFlows[0], tmp);
@@ -62,7 +60,7 @@ void GBHDescriptor::computeMaxColorDxDy(const cv::Mat& src, cv::Mat& dx, cv::Mat
 		grey = src;
 
 	//do the sobel computation
-	Sobel(grey, dx, CV_32F, 1, 0, 3, 1, 0, cv::BORDER_DEFAULT);
-	Sobel(grey, dy, CV_32F, 0, 1, 3, 1, 0, cv::BORDER_DEFAULT);
+	Sobel(grey, dx, CV_16S, 1, 0);
+	Sobel(grey, dy, CV_16S, 0, 1);
 
 }
